@@ -111,6 +111,10 @@
         socket.emit('logout');
       }
 
+      window.onbeforeunload = function(){
+        logout();
+      }
+
     </script>
   </head>
   <body>
