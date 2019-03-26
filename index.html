@@ -10,6 +10,108 @@
     <link rel="stylesheet" href="style.css">
 
     <title>Hello, world!</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.slim.js"></script>
+    <script>
+      var availRooms = [];
+      const socket = io("https://fearlessgenius.azurewebsites.net/");
+
+      socket.on('connected', () => {
+        let username = prompt('Enter a UserName', 'user');
+        while (!username) {
+          prompt('Enter a UserName', 'user');
+        }
+        socket.emit('login', username);
+      })
+
+      socket.on('userTaken', () => {
+        let username = prompt('UserName Taken', 'user');
+        while (!username) {
+          prompt('Enter a UserName', 'user');
+        }
+        socket.emit('login', username);
+      })
+
+      socket.on('ROOMS', data => {
+        availRooms = data.rooms;
+        let roomList = document.getElementById('RoomsSelect');
+        roomList.innerHTML = "";
+
+        // Create rooms list
+        for (let i =0; i < availRooms.length; i++) {
+          let roomButton = document.createElement('button');
+          roomButton.setAttribute('type', "button");
+          roomButton.setAttribute('class', "btn btn-outline-primary");
+          roomButton.innerText = availRooms[i];
+          roomButton.onclick = () => {
+            socket.emit('changeRoom', availRooms[i]);
+            $('#RoomModal').modal('hide')
+          }
+          roomList.append(roomButton);
+        }
+
+        // Create horizontal line
+        let hr = document.createElement('hr');
+        roomList.append(hr);
+
+        // create create button
+        let roomButton = document.createElement('button');
+        roomButton.setAttribute('type', "button");
+        roomButton.setAttribute('class', "btn btn-outline-primary");
+        roomButton.innerText = "Create Room";
+        roomButton.onclick = () => {
+          let roomName = prompt('New Room', 'RoomName');
+          if (roomName) {
+            socket.emit('changeRoom', roomName);
+            $('#RoomModal').modal('hide')
+          }
+        }
+        roomList.append(roomButton);
+      })
+
+      socket.on('JOINED', curRoom => {
+        let msgViewer = document.getElementById('MESSAGES');
+        msgViewer.innerHTML = "";
+
+        alert("Changed Room: " + curRoom)
+      })
+
+      function sendMsg() {
+        let domObject = document.getElementById('msgBody');
+        let msg = domObject.value;
+        socket.emit('message', msg)
+
+        let msgViewer = document.getElementById('MESSAGES');
+
+        // Create new Message
+        let msgHolder = document.createElement('div');
+        msgHolder.setAttribute('class', 'row justify-content-end');
+        let msgbubbule = document.createElement('div')
+        msgbubbule.setAttribute('class', 'col-sm-5 user2');
+        msgbubbule.innerText = msg;
+
+        msgHolder.append(msgbubbule);
+        msgViewer.prepend(msgHolder);
+      }
+
+      socket.on('message', msg => {
+        let msgViewer = document.getElementById('MESSAGES');
+
+        // Create new Message
+        let msgHolder = document.createElement('div');
+        msgHolder.setAttribute('class', 'row');
+        let msgbubbule = document.createElement('div')
+        msgbubbule.setAttribute('class', 'col col-sm-5 user1');
+        msgbubbule.innerText = msg;
+
+        msgHolder.append(msgbubbule);
+        msgViewer.prepend(msgHolder);
+      })
+
+      function logout() {
+        socket.emit('logout');
+      }
+
+    </script>
   </head>
   <body>
       <div id="topOfPage" class="container fixed-top">
@@ -21,19 +123,19 @@
               <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav">
                   <li class="nav-item">
-                    <a class="nav-link" href="#" data-toggle="modal" data-target="#exampleModal">Switch Room</a>
+                    <a class="nav-link" href="#" data-toggle="modal" data-target="#RoomModal">Switch Room</a>
                   </li>
                   <li class="nav-item">
-                    <a class="nav-link" href="#">Logout</a>
+                    <a class="nav-link" href="#" onclick="logout()">Logout</a>
                   </li>
                 </ul>
               </div>
             </nav>
 
             <div class="p_sendmessage input-group mb-3">
-              <input type="text" class="form-control" placeholder="Send Message" aria-label="Send Messaage" aria-describedby="button-addon2">
+              <input id="msgBody" type="text" class="form-control" placeholder="Send Message" aria-label="Send Messaage" aria-describedby="button-addon2">
               <div class="input-group-append">
-                <button class="btn btn-primary" type="button" id="button-addon2">Send</button>
+                <button class="btn btn-primary" type="button" id="button-addon2" onclick="sendMsg()">Send</button>
               </div>
             </div>
       </div>
@@ -62,7 +164,7 @@
       </div>
 
       <!-- Modal -->
-    <div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal fade" id="RoomModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
       <div class="modal-dialog" role="document">
         <div class="modal-content">
           <div class="modal-header">
@@ -71,7 +173,7 @@
               <span aria-hidden="true">&times;</span>
             </button>
           </div>
-          <div class="modal-body">
+          <div class="modal-body" id="RoomsSelect">
             <button type="button" class="btn btn-outline-primary">Room A</button>
             <button type="button" class="btn btn-outline-primary">Room B</button>
             <button type="button" class="btn btn-outline-primary">Room C</button>
@@ -80,7 +182,6 @@
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-            <button type="button" class="btn btn-primary">Save changes</button>
           </div>
         </div>
       </div>
